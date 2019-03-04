@@ -1,0 +1,140 @@
+#!/bin/sh
+set -e
+
+execute() {
+    local type bin key0 value0 key1 value1
+
+    findBinary() {
+        local os=`uname -s | awk '{print tolower($0)}'`
+        local suffix dir name
+        case "$os" in
+            MINGW*|CYGWIN*|mingw*|cygwin*) os=windows; suffix=".exe";;
+        esac
+        local arch=`uname -m | sed -e 's/^[Ii][3-6]86$/386/;s/^[Xx]86$/386/;s/^[Xx]\(86[-_]\)\{0,1\}64$/amd64/;s/^[Aa][Mm][Dd]64$/amd64/'`
+        local cwd="`pwd`"
+        local bn="`basename "$0"`"
+        bn="${bn%.*}"
+
+        for type in client server; do
+            for name in "${bn}_$type" "${bn}-$type" "${type}_${os}_$arch"; do
+                bin="$cwd/$name$suffix"
+                if [[ -f "$bin" ]] && [[ -x "$bin" ]]; then return; fi
+            done
+            if [[ "$arch" == "amd64" ]]; then
+                bin="$cwd/${type}_${os}_386$suffix"
+                if [[ -f "$bin" ]] && [[ -x "$bin" ]]; then return; fi
+            fi
+        done
+
+        for type in client server; do
+            for name in "${bn}_$type" "${bn}-$type"; do
+                bin=`command -v "$name" || true`
+                if [[ -n "$bin" ]]; then return; fi
+            done
+        done
+
+        local offset=0 last=0 pth="$PATH" ch
+        while true; do
+            ch="${pth:$offset:1}"
+            if [[ -z "$ch" ]] || [[ "$ch" == ":" ]]; then
+                set -- "$@" "${pth:$last:$((offset-last))}"
+                last=$((offset+1))
+                if [[ -z "$ch" ]]; then break; fi
+            fi
+            offset=$((offset+1))
+        done
+
+        for type in client server; do
+            for name in "${bn}_$type" "${bn}-$type"; do
+                for dir in "$@"; do
+                    if [[ -n "$dir" ]]; then
+                        bin="$dir/$name$suffix"
+                        if [[ -f "$bin" ]] && [[ -x "$bin" ]]; then return; fi
+                    fi
+                done
+            done
+        done
+
+        echo "no $bn client or server found" >&2
+        exit 1
+    }
+
+    setHosts() {
+        setAddr() {
+            local value="$3:$4"
+            case "$3" in "["*) ;; *":"*) value="[$3]:$4";; esac
+            if [[ "$1" -eq 0 ]]; then
+                key0="--$2"
+                value0="$value"
+            else
+                key1="--$2"
+                value1="$value"
+            fi
+        }
+        if [[ "$type" == 'client' ]]; then
+            setAddr 0 localaddr "${1:-127.0.0.1}" "${2:-12948}"
+            setAddr 1 remoteaddr "${3:-vps}" "${4:-29900}"
+        else
+            setAddr 0 listen "$3" "${4:-29900}"
+            setAddr 1 target "${1:-127.0.0.1}" "${2:-12948}"
+        fi
+    }
+
+    parseAndExecute() {
+        local ch offset result
+
+        nextToken() {
+            result=
+            while true; do
+                offset=$((offset+1))
+                ch="${1:$offset:1}"
+                if [[ -z "$ch" ]]; then break; fi
+                if [[ "$ch" == "\\" ]]; then
+                    offset=$((offset+1))
+                    ch="${1:$offset:1}"
+                    if [[ -z "$ch" ]]; then
+                        echo "nothing following final escape in $1" >&2
+                        exit 1
+                    fi
+                else
+                    case "$2" in *"$ch"*) break;; esac
+                fi
+                result="$result$ch"
+            done
+        }
+
+        local opts="$SS_PLUGIN_OPTIONS"
+        if [[ -n "$opts" ]]; then
+            local len="$#"
+            offset=-1
+            while true; do
+                nextToken "$opts" "=;"
+                if [[ -z "$result" ]]; then
+                    echo "empty key in $opts" >&2
+                    exit 1
+                fi
+                set -- "$@" "--$result"
+                if [[ "$ch" == "=" ]]; then
+                    nextToken "$opts" ";"
+                    set -- "$@" "$result"
+                fi
+                if [[ -z "$ch" ]]; then break; fi
+            done
+
+            while [[ "$len" -gt 0 ]]; do
+                len=$((len-1))
+                set -- "$@" "$1"
+                shift
+            done
+        fi
+
+        unset SS_LOCAL_HOST SS_LOCAL_PORT SS_REMOTE_HOST SS_REMOTE_PORT SS_PLUGIN_OPTIONS
+        "$bin" "$key0" "$value0" "$key1" "$value1" "$@"
+    }
+
+    findBinary
+    setHosts "$SS_LOCAL_HOST" "$SS_LOCAL_PORT" "$SS_REMOTE_HOST" "$SS_REMOTE_PORT"
+    parseAndExecute "$@"
+}
+
+execute "$@"

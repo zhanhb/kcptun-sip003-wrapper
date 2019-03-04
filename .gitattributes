@@ -1,0 +1,6 @@
+# Auto detect text files and perform LF normalization
+# disable auto normalization of platform line ending.
+* text eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.exe binary
