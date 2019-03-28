@@ -42,7 +42,6 @@
     for /F %%P in ('copy /Z %0 NUL') do set "CR=%%P"
     set "EM=^!"
     set "QUOTE=""
-    set "PERCENT=%%"
     set "BACKSLASH=\"
     set "CARET=^"
 
@@ -227,7 +226,7 @@
         for /L %%H in (0,1,!limit!) do (
             set "ch=!arg:~%%H,1!"
             if "!ch!" == "!CR!" (
-                set "buf=!buf!!PERCENT!!EM!"
+                set "buf=!buf!%%!EM!"
             ) else if "!ch!" == "!LF!" (
                 set "buf=!buf!!CARET!!ch!!ch!"
             ) else for /F delims^=^ eol^= %%P in ("!ch!") do (
