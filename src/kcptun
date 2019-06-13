@@ -1,4 +1,5 @@
 #!/bin/sh
+# use sh rather than bash in order to work correctly on router device which has no bash installed.
 set -e
 
 execute() {
