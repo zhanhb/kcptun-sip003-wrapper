@@ -171,6 +171,8 @@ execute() {
                 if [[ "$value" == 127 ]]; then break; fi
                 wait_result="$value"
                 if [[ "$value" == 0 ]]; then break; fi
+                # yield control of the CPU 
+                sleep 0.1 || sleep 1
             done
             child_pid=
             return $wait_result
