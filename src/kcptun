@@ -192,6 +192,7 @@ execute() {
                 if [[ "$value" == 0 ]]; then break; fi
                 # yield control of the CPU 
                 sleep 0.1 || sleep 1
+                if ! kill -0 "$child_pid" 2>/dev/null; then break; fi
             done
             child_pid=
             return $wait_result
