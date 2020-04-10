@@ -13,3 +13,8 @@ shadowsocks SIP003 wrapper for [xtaci/kcptun](https://github.com/xtaci/kcptun/re
    - $PATH/kcptun-client$suffix
    - $PATH/kcptun_server$suffix
    - $PATH/kcptun-server$suffix
+
+Sample usage:
+```shell script
+ss-redir --plugin kcptun.cmd --plugin-opts 'key=12 3\;4 5$6^&*()@;crypt=aes-128;mode=fast2;conn=4;nocomp;quiet'
+```
