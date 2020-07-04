@@ -26,8 +26,8 @@ child_pid=
 func_trap() {
     local signal="$1"
     # we can't kill background child process with signal INT
-    if [[ "$signal" == INT ]]; then signal=TERM; fi
-    if [[ -n "$child_pid" ]]; then
+    [ "$signal" != INT ] || signal=TERM
+    if [ -n "$child_pid" ]; then
         kill -s "$signal" "$child_pid" || true
     fi
 }
@@ -42,7 +42,7 @@ trap_with_arg() {
 }
 
 has_builtin() {
-    [[ "$(command -v "$1")" == "$1" ]]
+    [ "$(command -v "$1")" = "$1" ]
 }
 
 execute() {
@@ -62,28 +62,31 @@ execute() {
         for type in client server; do
             for name in "${bn}_$type" "${bn}-$type" "${type}_${os}_$arch"; do
                 bin="$cwd/$name$suffix"
-                if [[ -f "$bin" ]] && [[ -x "$bin" ]]; then return; fi
+                if [ -f "$bin" ] && [ -x "$bin" ]; then return; fi
             done
-            if [[ "$arch" == "amd64" ]]; then
+            if [ "$arch" = "amd64" ]; then
                 bin="$cwd/${type}_${os}_386$suffix"
-                if [[ -f "$bin" ]] && [[ -x "$bin" ]]; then return; fi
+                if [ -f "$bin" ] && [ -x "$bin" ]; then return; fi
             fi
         done
 
         for type in client server; do
             for name in "${bn}_$type" "${bn}-$type"; do
-                bin=`command -v "$name" || true`
-                if [[ -n "$bin" ]]; then return; fi
+                bin="`command -v "$name" || true`"
+                [ -z "$bin" ] || return 0
             done
         done
 
-        local offset=0 last=0 pth="$PATH" ch
+        local offset=0
+        local last=0
+        local pth="$PATH"
+        local ch
         while true; do
             ch="${pth:$offset:1}"
-            if [[ -z "$ch" ]] || [[ "$ch" == ":" ]]; then
+            if [ -z "$ch" ] || [ "$ch" = ":" ]; then
                 set -- "$@" "${pth:$last:$((offset-last))}"
                 last=$((offset+1))
-                if [[ -z "$ch" ]]; then break; fi
+                [ -n "$ch" ] || break
             fi
             offset=$((offset+1))
         done
@@ -91,9 +94,9 @@ execute() {
         for type in client server; do
             for name in "${bn}_$type" "${bn}-$type"; do
                 for dir in "$@"; do
-                    if [[ -n "$dir" ]]; then
+                    if [ -n "$dir" ]; then
                         bin="$dir/$name$suffix"
-                        if [[ -f "$bin" ]] && [[ -x "$bin" ]]; then return; fi
+                        if [ -f "$bin" ] && [ -x "$bin" ]; then return; fi
                     fi
                 done
             done
@@ -107,15 +110,10 @@ execute() {
         setAddr() {
             local value="$3:$4"
             case "$3" in "["*) ;; *":"*) value="[$3]:$4";; esac
-            if [[ "$1" -eq 0 ]]; then
-                key0="--$2"
-                value0="$value"
-            else
-                key1="--$2"
-                value1="$value"
-            fi
+            eval "key$1=\"--\$2\""
+            eval "value$1=\"\$value\""
         }
-        if [[ "$type" == 'client' ]]; then
+        if [ "$type" = 'client' ]; then
             setAddr 0 localaddr "${1:-127.0.0.1}" "${2:-12948}"
             setAddr 1 remoteaddr "${3:-vps}" "${4:-29900}"
         else
@@ -132,11 +130,11 @@ execute() {
             while true; do
                 offset=$((offset+1))
                 ch="${1:$offset:1}"
-                if [[ -z "$ch" ]]; then break; fi
-                if [[ "$ch" == "\\" ]]; then
+                [ -n "$ch" ] || break
+                if [ "$ch" = "\\" ]; then
                     offset=$((offset+1))
                     ch="${1:$offset:1}"
-                    if [[ -z "$ch" ]]; then
+                    if [ -z "$ch" ]; then
                         echo "nothing following final escape in $1" >&2
                         exit 1
                     fi
@@ -148,24 +146,25 @@ execute() {
         }
 
         local opts="$SS_PLUGIN_OPTIONS"
-        if [[ -n "$opts" ]]; then
+        if [ -n "$opts" ]; then
             local len="$#"
             offset=-1
             while true; do
                 nextToken "$opts" "=;"
-                if [[ -z "$result" ]]; then
+                if [ -z "$result" ]; then
                     echo "empty key in $opts" >&2
                     exit 1
                 fi
                 set -- "$@" "--$result"
-                if [[ "$ch" == "=" ]]; then
+                if [ "$ch" = "=" ]; then
                     nextToken "$opts" ";"
                     set -- "$@" "$result"
                 fi
-                if [[ -z "$ch" ]]; then break; fi
+                [ -n "$ch" ] || break
             done
 
-            while [[ "$len" -gt 0 ]]; do
+            # rotate the arguments
+            while [ "$len" -gt 0 ]; do
                 len=$((len-1))
                 set -- "$@" "$1"
                 shift
@@ -176,7 +175,7 @@ execute() {
         if has_builtin wait && has_builtin trap && has_builtin kill; then
             "$bin" "$key0" "$value0" "$key1" "$value1" "$@" &
             child_pid=$!
-            if [[ -z "$child_pid" ]]; then
+            if [ -z "$child_pid" ]; then
                 echo Unknown error occur, cannot get process id of child process. >&2
                 exit 1
             fi
@@ -187,12 +186,12 @@ execute() {
                 local value=0
                 wait "$child_pid" 2>/dev/null || value=$?
                 # 127 means this pid is not child process of our shell.
-                if [[ "$value" == 127 ]]; then break; fi
+                [ "$value" -ne 127 ] || break
                 wait_result="$value"
-                if [[ "$value" == 0 ]]; then break; fi
+                [ "$value" -ne 0 ] || break
                 # yield control of the CPU 
                 sleep 0.1 || sleep 1
-                if ! kill -0 "$child_pid" 2>/dev/null; then break; fi
+                kill -0 "$child_pid" 2>/dev/null || break
             done
             child_pid=
             return $wait_result
