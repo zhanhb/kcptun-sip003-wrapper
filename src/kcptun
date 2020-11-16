@@ -49,14 +49,14 @@ execute() {
     local type bin key0 value0 key1 value1
 
     findBinary() {
-        local os=`uname -s | awk '{print tolower($0)}'`
-        local suffix dir name
+        local os suffix dir name arch cwd bn
+        os=$(uname -s | awk '{print tolower($0)}')
         case "$os" in
             MINGW*|CYGWIN*|mingw*|cygwin*) os=windows; suffix=".exe";;
         esac
-        local arch=`uname -m | sed -e 's/^[Ii][3-6]86$/386/;s/^[Xx]86$/386/;s/^[Xx]\(86[-_]\)\{0,1\}64$/amd64/;s/^[Aa][Mm][Dd]64$/amd64/'`
-        local cwd="`pwd`"
-        local bn="`basename "$0"`"
+        arch="$(uname -m | sed -e 's/^[Ii][3-6]86$/386/;s/^[Xx]86$/386/;s/^[Xx]\(86[-_]\)\{0,1\}64$/amd64/;s/^[Aa][Mm][Dd]64$/amd64/')"
+        cwd="$(pwd)"
+        bn="$(basename "$0")"
         bn="${bn%.*}"
 
         for type in client server; do
@@ -72,7 +72,7 @@ execute() {
 
         for type in client server; do
             for name in "${bn}_$type" "${bn}-$type"; do
-                bin="`command -v "$name" || true`"
+                bin="$(command -v "$name" || true)"
                 [ -z "$bin" ] || return 0
             done
         done
