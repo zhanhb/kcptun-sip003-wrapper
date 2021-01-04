@@ -22,15 +22,15 @@
     setlocal EnableExtensions EnableDelayedExpansion
 
     rem find binary
-    set bn=%~n0
+    set "bn=%~n0"
     set "suffix=.exe"
     set "arch=!PROCESSOR_ARCHITEW6432!"
     if "!arch!" == "" set "arch=!PROCESSOR_ARCHITECTURE!"
+    if /I "!arch!" == x86 set arch=386
     for %%P in ("A=a" "B=b" "C=c" "D=d" "E=e" "F=f" "G=g" "H=h" "I=i" "J=j"
         "K=k" "L=l" "M=m" "N=n" "O=o" "P=p" "Q=q" "R=r" "S=s" "T=t" "U=u"
         "V=v" "W=w" "X=x" "Y=y" "Z=z") do set "arch=!arch:%%~P!"
-    if /I "!arch!" == "x86" set arch=386
-    set "file="
+    set file=
     for %%G in (client server) do if "!file!" == "" (
         set "type=%%G"
         for %%H in (!bn!_%%G !bn!-%%G %%G_windows_!arch!) do if "!file!" == "" (
@@ -60,10 +60,11 @@
 %=Do not remove this line=%
 )
     for /F %%P in ('copy /Z %0 NUL') do set "CR=%%P"
-    set "EM=^!"
-    set "QUOTE=""
-    set "BACKSLASH=\"
+    set BACKSLASH=\
     set "CARET=^"
+    set EM=^^^!
+    set "QUOTE=""
+    set "QUOTE=!QUOTE:~0,1!"
 
     set argc=0
 
