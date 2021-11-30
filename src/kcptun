@@ -146,4 +146,8 @@ main() {
     parseAndExecute "$@"
 }
 
+[ "x${1-}" != x--fast-open ] || {
+    echo "skip unsupported option \"$1\"" >&2
+    shift
+}
 main "$@"
