@@ -29,7 +29,7 @@ main() {
     local type bin key0 value0 key1 value1
 
     findBinary() {
-        local os suffix dir name arch cwd bn
+        local os suffix name arch cwd bn
         os=$(printf "%s" "$UNAME_S" | awk '{print tolower($0)}')
         case "$os" in
             MINGW*|CYGWIN*|mingw*|cygwin*) os=windows; suffix=".exe";;
@@ -50,34 +50,8 @@ main() {
         done
 
         for type in client server; do
-            for name in "${bn}_$type" "${bn}-$type"; do
-                bin="$(command -v "$name" || true)"
-                [ -z "$bin" ] || return 0
-            done
-        done
-
-        local offset=0
-        local last=0
-        local pth="$PATH"
-        local ch
-        while true; do
-            ch="${pth:$offset:1}"
-            if [ -z "$ch" ] || [ "$ch" = ":" ]; then
-                set -- "$@" "${pth:$last:$((offset-last))}"
-                last=$((offset+1))
-                [ -n "$ch" ] || break
-            fi
-            offset=$((offset+1))
-        done
-
-        for type in client server; do
-            for name in "${bn}_$type" "${bn}-$type"; do
-                for dir in "$@"; do
-                    if [ -n "$dir" ]; then
-                        bin="$dir/$name$suffix"
-                        if [ -f "$bin" ] && [ -x "$bin" ]; then return; fi
-                    fi
-                done
+            for bin in "${bn}_$type" "${bn}-$type"; do
+                if hash "$bin" 2>/dev/null; then return; fi
             done
         done
 
