@@ -28,26 +28,39 @@ UNAME_S="${UNAME_S:-"$(uname -s)"}"
 main() {
     local type bin key0 value0 key1 value1
 
-    findBinary() {
-        local os suffix name arch cwd bn
-        os=$(printf "%s" "$UNAME_S" | awk '{print tolower($0)}')
-        case "$os" in
-            MINGW*|CYGWIN*|mingw*|cygwin*) os=windows; suffix=".exe";;
-        esac
-        arch="$(printf "%s" "$UNAME_M" | sed -e 's/^[Ii][3-6]86$/386/;s/^[Xx]86$/386/;s/^[Xx]\(86[-_]\)\{0,1\}64$/amd64/;s/^[Aa][Mm][Dd]64$/amd64/')"
-        cwd="$(pwd)"
-        bn="${BASENAME%.*}"
-
+    search_in() {
+        local saved_path name
+        saved_path="$PATH"
+        export PATH="$1"
         for type in client server; do
-            for name in "${bn}_$type" "${bn}-$type" "${type}_${os}_$arch"; do
-                bin="$cwd/$name$suffix"
-                if [ -f "$bin" ] && [ -x "$bin" ]; then return; fi
+            for name in "${2}_$type" "${2}-$type" "${type}_${3}_$4"; do
+                if hash "$name" 2>/dev/null; then
+                    export PATH="$saved_path"
+                    bin="$1/$name"
+                    return
+                fi
             done
-            if [ "$arch" = "amd64" ]; then
-                bin="$cwd/${type}_${os}_386$suffix"
-                if [ -f "$bin" ] && [ -x "$bin" ]; then return; fi
+            if [ "$4" = amd64 ]; then
+                name="${type}_${3}_386"
+                if hash "$name" 2>/dev/null; then
+                    export PATH="$saved_path"
+                    bin="$1/$name"
+                    return
+                fi
             fi
         done
+        export PATH="$saved_path"
+        return 1
+    }
+
+    findBinary() {
+        local os arch bn
+        os=$(printf "%s" "$UNAME_S" | awk '{print tolower($0)}')
+        case "$os" in MINGW* | CYGWIN* | mingw* | cygwin*) os=windows ;; *) ;; esac
+        arch="$(printf "%s" "$UNAME_M" | sed -e 's/^[Ii][3-6]86$/386/;s/^[Xx]86$/386/;s/^[Xx]\(86[-_]\)\{0,1\}64$/amd64/;s/^[Aa][Mm][Dd]64$/amd64/')"
+        bn="${BASENAME%.*}"
+
+        if search_in . "$bn" "$os" "$arch"; then return; fi
 
         for type in client server; do
             for bin in "${bn}_$type" "${bn}-$type"; do
