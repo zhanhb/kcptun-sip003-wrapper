@@ -1,7 +1,7 @@
 # kcptun-sip003-wrapper
 shadowsocks SIP003 wrapper for [xtaci/kcptun](https://github.com/xtaci/kcptun/releases/latest), act like [shadowsocks/kcptun](https://github.com/shadowsocks/kcptun/releases/tag/v20170718).
 
-1. Put kcptun binary in the same directory of this script or into a directory in the PATH environemnt.
+1. Put kcptun binary in the same directory of this script or into a directory in the PATH environment.
    #### searching precedence
    - \`pwd\`/kcptun_client$suffix
    - \`pwd\`/kcptun-client$suffix
@@ -14,7 +14,18 @@ shadowsocks SIP003 wrapper for [xtaci/kcptun](https://github.com/xtaci/kcptun/re
    - $PATH/kcptun_server$suffix
    - $PATH/kcptun-server$suffix
 
+It is recommended to rename the downloaded binary to kcptun-client or kcptun-server.
+
 Sample usage:
 ```shell script
 ss-redir --plugin kcptun.cmd --plugin-opts 'key=12 3\;4 5$6^&*()@;crypt=aes-128;mode=fast2;conn=4;nocomp;quiet'
 ```
+
+Known compatible list for kcptun shell script:
+- ash: busybox ash with default feature enabled
+- bash
+- mksh
+- zsh
+
+Known incompatible list:
+- csh dash fish
